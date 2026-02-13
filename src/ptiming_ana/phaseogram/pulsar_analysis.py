@@ -76,7 +76,7 @@ class PulsarAnalysis:
     """
 
     def __init__(
-        self, filename=None, nbins=50, tint=3600, binned=True, model="dgaussian"
+        self, filename=None, nbins=50, tint=3600, binned=True, model='dgaussian'
     ):
         if filename is not None:
             if "fits" in filename:
@@ -110,17 +110,19 @@ class PulsarAnalysis:
         if "fits" in filename:
             self.r = ReadFermiFile(filename)
             self.telescope = "fermi"
-            self.energy_units = "GeV"
+# AJB       self.energy_units = "GeV"
+            self.energy_units = "TeV"
 
         else:
             raise ValueError("No FITS file given for Fermi-LAT data")
 
     def setListsInput(
-        self, plist, tlist=None, elist=None, tel="MAGIC", energy_units="GeV"
+        self, plist, tlist=None, elist=None, tel="MAGIC", energy_units="GeV", sc_file=None
     ):
-        self.r = ReadList(plist, tlist, elist, tel)
+        self.r = ReadList(plist, tlist, elist, tel, sc_file=sc_file)
         self.telescope = tel
         self.energy_units = energy_units
+        self.sc_file = sc_file
 
     def setDL3InputFile(
         self,

@@ -100,6 +100,9 @@ class PEnergyAnalysis:
                     + f"):{self.energy_edges[i]:.2f}-{self.energy_edges[i+1]:.2f}"
                 )
                 self.Parray.append(copy.copy(pulsarana))
+
+                self.Parray[i].r.sc_file = pulsarana.r.sc_file
+
                 self.Parray[i].setTimeInterval(self.Parray[i].tint)
                 self.Parray[i].phases = np.array(di["pulsar_phase"].to_list())
                 self.Parray[i].info = di
@@ -130,6 +133,9 @@ class PEnergyAnalysis:
                     + f"):E > {self.energy_edges[i]:.2f}"
                 )
                 self.Parray_integral.append(copy.copy(pulsarana))
+
+                self.Parray_integral[i].r.sc_file = pulsarana.r.sc_file
+
                 self.Parray_integral[i].setTimeInterval(self.Parray_integral[i].tint)
                 self.Parray_integral[i].phases = np.array(di["pulsar_phase"].to_list())
                 self.Parray_integral[i].info = di

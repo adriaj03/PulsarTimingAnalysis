@@ -495,11 +495,12 @@ class ReadtxtFile:
 
 
 class ReadList:
-    def __init__(self, phases_list, time_list=None, energy_list=None, tel="LST"):
+    def __init__(self, phases_list, time_list=None, energy_list=None, tel="LST", sc_file=None):
         self.plist = phases_list
         self.tlist = time_list
         self.elist = energy_list
         self.tel = tel
+        self.sc_file = sc_file  # Guardamos la ruta al archivo Spacecraft
 
     def create_df_from_info(self):
         dataframe = pd.DataFrame(
@@ -519,6 +520,20 @@ class ReadList:
             return get_effective_time(dataframe)[1].value / 3600
 
         elif self.tel == "fermi":
+            # --- NUEVO FILTRO SPACECRAFT ---
+            # Verificamos si existe el atributo sc_file y si no es None
+            if hasattr(self, 'sc_file') and self.sc_file is not None:
+                try:
+                    with fits.open(self.sc_file) as hdul:
+                        sc_data = hdul[1].data
+                        # El LIVETIME en los archivos SC de Fermi ya está en segundos
+                        total_livetime_s = np.sum(sc_data['LIVETIME'])
+                        logger.info(f"    LIVETIME extraído del archivo Spacecraft: {total_livetime_s / 3600:.2f} h")
+                        return total_livetime_s / 3600
+                except Exception as e:
+                    logger.warning(f"    No se pudo leer el archivo SC, usando método diff: {e}")
+            
+            # --- LÓGICA ORIGINAL (Sin cambios) ---
             diff = np.array(self.info["mjd_time"].to_list()[1:]) - np.array(
                 self.info["mjd_time"].to_list()[0:-1]
             )
@@ -529,5 +544,5 @@ class ReadList:
         self.create_df_from_info()
         self.tobs = self.calculate_tobs()
         logger.info(
-            "    Finishing reading. Total time is " + str(self.tobs) + " s" + "\n"
+            "    Finishing reading. Total time is " + str(self.tobs) + " h" + "\n"
         )
