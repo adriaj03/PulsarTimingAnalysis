@@ -13,9 +13,9 @@ Tools to perform the periodicity analysis of gamma-ray emission from pulsars. It
 The easiest way to install the package is by cloning the repository and creating a new environment using `environment.yml`
 
 ```
-git clone https://github.com/cta-observatory/PulsarTimingAnalysis.git
+git clone https://github.com/adriaj03/PulsarTimingAnalysis.git
 cd PulsarTimingAnalysis
-mamba env create -n pulsar-lst1 -f environment.yml
+mamba env create -n pulsar-fermi -f environment.yml
 conda activate pulsar-lst1
 pip install .
 ```
