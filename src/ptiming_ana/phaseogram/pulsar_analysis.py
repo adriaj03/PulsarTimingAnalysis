@@ -110,7 +110,7 @@ class PulsarAnalysis:
         if "fits" in filename:
             self.r = ReadFermiFile(filename)
             self.telescope = "fermi"
-            self.energy_units = "GeV"
+            self.energy_units = "TeV"
 
         else:
             raise ValueError("No FITS file given for Fermi-LAT data")
@@ -375,10 +375,10 @@ class PulsarAnalysis:
         self.info["pulsar_phase"] = self.phases
 
     def init_regions(self):
-        OFFob = PulsarPeak(peak_limits=self.OFF_limits, peaktype="background")
+        OFFob = PulsarPeak(peak_limits=self.OFF_limits, peaktype="background")                  
 
         if self.P1_limits is not None:
-            p1ob = PulsarPeak(peak_limits=self.P1_limits, peaktype="signal")
+            p1ob = PulsarPeak(peak_limits=self.P1_limits, peaktype="signal")        
         else:
             p1ob = None
 
@@ -422,23 +422,26 @@ class PulsarAnalysis:
     def initialize(self):
         # Read the data and filter
         try:
-            self.r.run(self)
+            self.r.run(self)            # read_events.py (ReadFermiFile)                                 
         except TypeError:
             self.r.run()
 
         # Extract each attribute
-        self.phases = np.array(self.r.info["pulsar_phase"].to_list())
-        self.info = self.r.info
+        self.phases = np.array(self.r.info["pulsar_phase"].to_list())           
+        self.info = self.r.info                                                 
 
         # Shift phases if necessary
-        self.shift_phases(xmin=self.binning.xmin)
+        self.shift_phases(xmin=self.binning.xmin)               
 
         # Initialize the regions object
-        self.init_regions()
+        self.init_regions()                                     
+
+        # self.info -> datos ['mjd_time','pulsar_phase','dragon_time','energy'] | self.tobs -> tiempo (h)
+        # Límites, tipo de señal y porcentaje que ocupa en el faseograma.
 
     def execute_stats(self, tobs):
         # Update the information at a certain interval of time and store final values
-        self.TimeEv.run(self)
+        self.TimeEv.run(self)            # ptime_analysis.py (PulsarTimeAnalysis)
 
         # COmpute P1/P2 ratio
         self.regions.calculate_P1P2()
@@ -456,10 +459,10 @@ class PulsarAnalysis:
         else:
             logger.info("No fit has been done since no fit parameters has been set")
 
-    def run(self):
+    def run(self):                                              
         # Initializa
         logger.info("Initializing...")
-        self.initialize()
+        self.initialize()                                       
 
         # Excute stats
         logger.info(

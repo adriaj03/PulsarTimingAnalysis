@@ -180,46 +180,60 @@ class Lightcurve:
 
     def draw_background(self, pulsar_phases, color, hline=True):
         # Draw the background region
-        plt.fill_between(
-            np.linspace(
-                pulsar_phases.regions.OFF.limits[0],
-                pulsar_phases.regions.OFF.limits[1],
-                150,
-            ),
-            0,
-            1600500,
-            facecolor="white",
-            color=color,
-            alpha=0.2,
-            hatch="/",
-            label="OFF",
-        )
 
-        plt.fill_between(
-            np.linspace(
-                pulsar_phases.regions.OFF.limits[0] + 1,
-                pulsar_phases.regions.OFF.limits[1] + 1,
-                150,
-            ),
-            0,
-            1600500,
-            facecolor="white",
-            color=color,
-            alpha=0.2,
-            hatch="/",
-        )
+        limits = pulsar_phases.regions.OFF.limits
+
+        # Envolvemos el código original en un bucle para recorrer todos los límites
+        for i in range(0, len(limits), 2):
+            
+            # Para que en la leyenda no salga repetido "OFF", solo lo ponemos en la primera vuelta
+            if i == 0:
+                label_name = "OFF"
+            else:
+                label_name = None
+
+            plt.fill_between(
+                np.linspace(
+                    limits[i],
+                    limits[i+1],
+                    150,
+                ),
+                0,
+                1600500,
+                facecolor="white",
+                color=color,
+                alpha=0.2,
+                hatch="/",
+                label=label_name,
+            )
+
+            plt.fill_between(
+                np.linspace(
+                    limits[i] + 1,
+                    limits[i+1] + 1,
+                    150,
+                ),
+                0,
+                1600500,
+                facecolor="white",
+                color=color,
+                alpha=0.2,
+                hatch="/",
+            )
 
         # Add hline for background level reference (default True)
         if hline:
+
+            # Creamos un filtro acumulando el código original 
+            # self.lc[0] -> alturas | self.lc[1] -> posición
+            mask = np.zeros(len(self.lc[0]), dtype=bool)
+            for i in range(0, len(limits), 2):
+                mask = mask | (
+                    (self.lc[1][:-1] > limits[i]) & (self.lc[1][1:] < limits[i+1])
+                )
+
             plt.hlines(
-                y=np.mean(
-                    (
-                        self.lc[0][
-                            (self.lc[1][:-1] > (pulsar_phases.regions.OFF.limits[0]))
-                            & (self.lc[1][1:] < (pulsar_phases.regions.OFF.limits[1]))
-                        ]
-                    )
-                ),
+                y=np.mean(self.lc[0][mask]),
                 xmin=0,
                 xmax=2,
                 linestyle="dashed",

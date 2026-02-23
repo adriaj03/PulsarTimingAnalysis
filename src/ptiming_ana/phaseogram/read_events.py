@@ -59,9 +59,9 @@ class ReadFermiFile:
         energies = fits_table["ENERGY"].byteswap().newbyteorder()
         dataframe = pd.DataFrame(
             {
-                "mjd_time": time,
+                "mjd_time": time,                           # time en "dias"
                 "pulsar_phase": phases,
-                "dragon_time": time * 3600 * 24,
+                "dragon_time": time * 3600 * 24,            # time en "s"
                 "energy": energies / 1e6,
             }
         )
@@ -78,10 +78,10 @@ class ReadFermiFile:
 
     def run(self):
         logger.info("Reading Fermi-LAT data file")
-        ftable = self.read_file()
+        ftable = self.read_file()                                                                                                                       
         self.create_df_from_info(ftable)
         self.tobs = self.calculate_tobs()
-        logger.info("Finishing reading. Total time is " + str(self.tobs) + " h" + "\n")
+        logger.info("Finishing reading. Total time is " + str(self.tobs) + " h" + "\n")         
 
 
 class ReadDL3File:
@@ -529,5 +529,5 @@ class ReadList:
         self.create_df_from_info()
         self.tobs = self.calculate_tobs()
         logger.info(
-            "    Finishing reading. Total time is " + str(self.tobs) + " s" + "\n"
+            "    Finishing reading. Total time is " + str(self.tobs) + " h" + "\n"
         )

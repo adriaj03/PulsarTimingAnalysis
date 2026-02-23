@@ -223,7 +223,12 @@ class PulsarPeak:
             self.sign = stats.sqrt_ts.item()
             self.Nex = stats.n_sig
             self.yerr = yerror
-            self.sign_ratio = self.sign / np.sqrt(tobs)
+
+            if tobs > 0:
+                self.sign_ratio = self.sign / np.sqrt(tobs)
+            else:
+                self.sign_ratio = 0
+                
             self.s_n_ratio = self.Nex / np.sqrt(noff)
             self.noff = noff
 

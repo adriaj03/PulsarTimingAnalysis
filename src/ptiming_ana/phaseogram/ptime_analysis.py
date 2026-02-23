@@ -70,15 +70,21 @@ class PulsarTimeAnalysis:
         except AttributeError:
             pass
 
+        # Definimos el corte de tiempo dinámicamente según el telescopio
+        # Mantenemos 1 segundo por defecto para no romper la base de la librería
+        time_cut = 1
+        if hasattr(pulsar_phases, 'telescope') and pulsar_phases.telescope == 'fermi':
+            time_cut = 3600 * 5  # Para Fermi, permitimos huecos de hasta 5 horas (como hace el método run)
+
         if "delta_t" in pulsar_phases.info:
             diff = pulsar_phases.info.delta_t
-            self.t.append(sum(diff[diff < 1]))
+            self.t.append(sum(diff[diff < time_cut]))
         else:
             diff = abs(
                 pulsar_phases.info.dragon_time.values[1:]
                 - pulsar_phases.info.dragon_time.values[:-1]
             )
-            self.t.append(sum(diff[diff < 1]))
+            self.t.append(sum(diff[diff < time_cut]))
 
         pulsar_phases.tobs = self.t[-1] / 3600
 

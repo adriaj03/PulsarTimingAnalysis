@@ -63,7 +63,7 @@ class PeakFitting:
         if self.model == "tgaussian":
             regions_names = ["P1", "P2", "P3"]
         elif self.model == "gaussian":
-            regions_names = ["P2"]
+            regions_names = ["P1"]
         else:
             regions_names = ["P1", "P2"]
 
@@ -94,20 +94,17 @@ class PeakFitting:
                 if self.model != "gaussian" and self.model != "lorentzian":
                     raise ValueError("Double Gaussian model needs two peaks")
 
-        bkg = np.mean(
-            (
-                pulsar_phases.histogram.lc[0][
-                    (
-                        pulsar_phases.histogram.lc[1][:-1]
-                        > (pulsar_phases.regions.OFF.limits[0])
-                    )
-                    & (
-                        pulsar_phases.histogram.lc[1][1:]
-                        < pulsar_phases.regions.OFF.limits[1]
-                    )
-                ]
+        # Creamos la máscara para calcular el 'bkg' inicial uniendo todos los límites OFF
+        mask = np.zeros(len(pulsar_phases.histogram.lc[0]), dtype=bool)
+        limits = pulsar_phases.regions.OFF.limits
+        
+        for i in range(0, len(limits), 2):
+            mask = mask | (
+                (pulsar_phases.histogram.lc[1][:-1] > limits[i])
+                & (pulsar_phases.histogram.lc[1][1:] < limits[i+1])
             )
-        )
+            
+        bkg = np.mean(pulsar_phases.histogram.lc[0][mask])
 
         self.init.extend(height)
         self.init.append(bkg)
@@ -280,17 +277,42 @@ class PeakFitting:
         shift_phases = np.array(shift_phases)
         bin_centres = (shift_phases[1:] + shift_phases[0:-1]) / 2
 
+        # --- FUNCIONES AUXILIARES PARA LIMITES GLOBALES ---
+        def get_lims(peak_name):
+            # Extrae los límites y aplica el shift para cualquier pico que le pidamos
+            if pulsar_phases.regions.dic.get(peak_name) is not None:
+                lims = pulsar_phases.regions.dic[peak_name].limits
+                shifted = [l + 1 if l < self.shift else l for l in lims]
+                return min(shifted), max(shifted)
+            return 0, 1  # Si el pico no existe, damos libertad total [0, 1]
+
+        p1_min, p1_max = get_lims("P1")
+        p2_min, p2_max = get_lims("P2")
+        p3_min, p3_max = get_lims("P3")
+
+        # --- PROTECCIÓN UNIVERSAL DEL PUNTO DE INICIO (p0) ---
+        p0_safe = list(self.init[:-1])
+        # Obligamos a que ningún parámetro inicial (amplitudes, anchuras...) sea negativo
+        for idx in range(len(p0_safe)):
+            if p0_safe[idx] < 0:
+                p0_safe[idx] = 0
+
+        # --- AJUSTES POR MODELOS CON LÍMITES (BOUNDS) ---
         if self.model == "dgaussian":
 
             def custom_dgaussian(x, mu, sigma, mu_2, sigma_2, B, C):
                 return double_gaussian(x, mu, sigma, mu_2, sigma_2, self.init[-1], B, C)
+
+            lower_bounds = [p1_min, 0, p2_min, 0, 0, 0]
+            upper_bounds = [p1_max, 1, p2_max, 1, np.inf, np.inf]
 
             params, pcov_l = curve_fit(
                 custom_dgaussian,
                 bin_centres,
                 bin_height,
                 sigma=np.sqrt(bin_height),
-                p0=self.init[:-1],
+                p0=p0_safe,
+                bounds=(lower_bounds, upper_bounds)
             )
             self.parnames = ["mu", "sigma", "mu_2", "sigma_2", "A", "B", "C"]
 
@@ -305,13 +327,17 @@ class PeakFitting:
                 return assymetric_double_gaussian_vec(
                     x, mu, sigma1, sigma2, mu_2, sigma1_2, sigma2_2, self.init[-1], B, C
                 )
+            
+            lower_bounds = [p1_min, 0, 0, p2_min, 0, 0, 0, 0]
+            upper_bounds = [p1_max, 1, 1, p2_max, 1, 1, np.inf, np.inf]
 
             params, pcov_l = curve_fit(
                 custom_adgaussian,
                 bin_centres,
                 bin_height,
                 sigma=np.sqrt(bin_height),
-                p0=self.init[:-1],
+                p0=p0_safe,
+                bounds=(lower_bounds, upper_bounds)
             )
             self.parnames = [
                 "mu",
@@ -331,6 +357,9 @@ class PeakFitting:
                 return triple_gaussian(
                     x, self.init[-1], mu, sigma, mu_2, sigma_2, mu_3, sigma_3, B, C, D
                 )
+            
+            lower_bounds = [p1_min, 0, p2_min, 0, p3_min, 0, 0, 0, 0]
+            upper_bounds = [p1_max, 1, p2_max, 1, p3_max, 1, np.inf, np.inf, np.inf]
 
             # bounds = ([0,0,0,0,0,0.1,0,0,0],[2,2,2,2,2,2,np.inf,np.inf,np.inf])
             params, pcov_l = curve_fit(
@@ -338,7 +367,8 @@ class PeakFitting:
                 bin_centres,
                 bin_height,
                 sigma=np.sqrt(bin_height),
-                p0=self.init[:-1],
+                p0=p0_safe,
+                bounds=(lower_bounds, upper_bounds)
             )
             self.parnames = [
                 "A",
@@ -360,12 +390,16 @@ class PeakFitting:
                     x, mu_1, gamma_1, mu_2, gamma_2, self.init[-1], B, C
                 )
 
+            lower_bounds = [p1_min, 0, p2_min, 0, 0, 0]
+            upper_bounds = [p1_max, 1, p2_max, 1, np.inf, np.inf]
+
             params, pcov_l = curve_fit(
                 custom_lorentzian,
                 bin_centres,
                 bin_height,
                 sigma=np.sqrt(bin_height),
-                p0=self.init[:-1],
+                p0=p0_safe,
+                bounds=(lower_bounds, upper_bounds)
             )
 
             self.parnames = ["mu_1", "gamma_1", "mu_2", "gamma_2", "A", "B", "C"]
@@ -374,13 +408,18 @@ class PeakFitting:
 
             def custom_lorentzian(x, mu_1, gamma_1, B):
                 return lorentzian(x, mu_1, gamma_1, self.init[-1], B)
+            
+            p_min, p_max = get_lims(self.peak_tofit) if self.peak_tofit in ["P1", "P2"] else (0, 1)
+            lower_bounds = [p_min, 0, 0]
+            upper_bounds = [p_max, 1, np.inf]
 
             params, pcov_l = curve_fit(
                 custom_lorentzian,
                 bin_centres,
                 bin_height,
                 sigma=np.sqrt(bin_height),
-                p0=self.init[:-1],
+                p0=p0_safe,
+                bounds=(lower_bounds, upper_bounds)
             )
 
             self.parnames = ["mu_1", "gamma_1", "A", "B"]
@@ -389,13 +428,18 @@ class PeakFitting:
 
             def custom_gaussian(x, mu, sigma, B):
                 return gaussian(x, mu, sigma, self.init[-1], B)
+            
+            p_min, p_max = get_lims(self.peak_tofit) if self.peak_tofit in ["P1", "P2"] else get_lims("P1")
+            lower_bounds = [p_min, 0, 0]
+            upper_bounds = [p_max, 1, np.inf]
 
             params, pcov_l = curve_fit(
                 custom_gaussian,
                 bin_centres,
                 bin_height,
                 sigma=np.sqrt(bin_height),
-                p0=self.init[:-1],
+                p0=p0_safe,
+                bounds=(lower_bounds, upper_bounds)
             )
             self.parnames = ["mu", "sigma", "A", "B"]
 
