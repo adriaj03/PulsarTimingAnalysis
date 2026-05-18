@@ -70,22 +70,33 @@ class PulsarTimeAnalysis:
         except AttributeError:
             pass
 
-        # Definimos el corte de tiempo dinámicamente según el telescopio
-        # Mantenemos 1 segundo por defecto para no romper la base de la librería
-        time_cut = 1
+        # === NUEVA LÓGICA DE TIEMPO PROPORCIONAL PARA FERMI ===
         if hasattr(pulsar_phases, 'telescope') and pulsar_phases.telescope == 'fermi':
-            time_cut = 3600 * 5  # Para Fermi, permitimos huecos de hasta 5 horas (como hace el método run)
-
-        if "delta_t" in pulsar_phases.info:
-            diff = pulsar_phases.info.delta_t
-            self.t.append(sum(diff[diff < time_cut]))
+            # Usamos self.total_events (calculado en el run)
+            total_fotones = getattr(self, 'total_events', len(dataframe))
+            if total_fotones == 0: total_fotones = 1 # Para evitar divisiones por cero
+            
+            proporcion = len(dataframe) / total_fotones
+            # AQUÍ ESTÁ LA CORRECCIÓN: usamos pulsar_phases.r.tobs (el objeto lector)
+            tiempo_tramo_s = (pulsar_phases.r.tobs * 3600.0) * proporcion
+            self.t.append(tiempo_tramo_s)
         else:
-            diff = abs(
-                pulsar_phases.info.dragon_time.values[1:]
-                - pulsar_phases.info.dragon_time.values[:-1]
-            )
-            self.t.append(sum(diff[diff < time_cut]))
+            # === MÉTODO CLÁSICO ===
+            time_cut = 1
+            if hasattr(pulsar_phases, 'telescope') and pulsar_phases.telescope == 'fermi':
+                time_cut = 3600 * 5  # Para Fermi, permitimos huecos de hasta 5 horas
+            
+            if "delta_t" in pulsar_phases.info:
+                diff = pulsar_phases.info.delta_t
+                self.t.append(sum(diff[diff < time_cut]))
+            else:
+                diff = abs(
+                    pulsar_phases.info.dragon_time.values[1:]
+                    - pulsar_phases.info.dragon_time.values[:-1]
+                )
+                self.t.append(sum(diff[diff < time_cut]))
 
+        # Reasignamos el tobs del objeto principal para que la tabla final cuadre
         pulsar_phases.tobs = self.t[-1] / 3600
 
         # Calculate stats
@@ -96,35 +107,53 @@ class PulsarTimeAnalysis:
 
     def run(self, pulsar_phases):
         dataframe = pulsar_phases.info
-        diff = abs(dataframe.dragon_time.values[1:] - dataframe.dragon_time.values[:-1])
-        s = 0
         self.t = [0]
+        # Guardamos el total de fotones original antes de que se recorte
+        self.total_events = len(dataframe) 
 
-        # Estimate from each telescope the interval of time at which we can ignore the differences of time
-        if pulsar_phases.telescope == "fermi":
-            self.diff_del = 3600 * 5
-        else:
-            self.diff_del = 3600
-
-        # Update the information
-        for i in range(0, len(diff)):
-            if diff[i] < self.diff_del:
-                s = s + diff[i]
-
-                # Update information when tobs>=tint
-                if s > self.tint:
-                    pulse_df_partial = dataframe[
-                        dataframe["dragon_time"] < dataframe.dragon_time.values[i + 1]
-                    ]
+        # === BUCLE DE TIEMPO REVOLUCIONADO PARA FERMI ===
+        if hasattr(pulsar_phases, 'telescope') and pulsar_phases.telescope == "fermi":
+            # AQUÍ TAMBIÉN CORREGIDO: pulsar_phases.r.tobs
+            total_time_s = pulsar_phases.r.tobs * 3600.0 
+            
+            accumulated_time = 0
+            last_update_time = 0
+            
+            for i in range(self.total_events):
+                # Repartimos las horas reales uniformemente fotón a fotón
+                accumulated_time = ((i + 1) / self.total_events) * total_time_s
+                
+                # Cada vez que acumulamos 'tint' segundos (ej: 24h), guardamos un punto en la gráfica
+                if (accumulated_time - last_update_time) >= self.tint:
+                    pulse_df_partial = dataframe.iloc[:i+1]
                     self.update_tinfo(pulsar_phases, pulse_df_partial)
-                    s = 0
-
-                # Update last interval
-                elif i == (len(diff) - 1):
+                    last_update_time = accumulated_time
+                    
+                # Guardamos el último tramo al llegar al final
+                elif i == (self.total_events - 1):
                     self.update_tinfo(pulsar_phases, dataframe)
-
-            else:
-                diff[i] = 0
+                    
+        else:
+            # === BUCLE CLÁSICO PARA LST / MAGIC ===
+            diff = abs(dataframe.dragon_time.values[1:] - dataframe.dragon_time.values[:-1])
+            s = 0
+            self.diff_del = 3600
+            if hasattr(pulsar_phases, 'telescope') and pulsar_phases.telescope == "fermi":
+                self.diff_del = 3600 * 5
+                
+            for i in range(0, len(diff)):
+                if diff[i] < self.diff_del:
+                    s = s + diff[i]
+                    if s > self.tint:
+                        pulse_df_partial = dataframe[
+                            dataframe["dragon_time"] < dataframe.dragon_time.values[i + 1]
+                        ]
+                        self.update_tinfo(pulsar_phases, pulse_df_partial)
+                        s = 0
+                    elif i == (len(diff) - 1):
+                        self.update_tinfo(pulsar_phases, dataframe)
+                else:
+                    diff[i] = 0
 
     ##############################################
     # RESULTS

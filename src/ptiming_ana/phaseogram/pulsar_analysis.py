@@ -510,7 +510,7 @@ class PulsarAnalysis:
         hline=True,
     ):
         # Plot histogram from 0 to 1 and from 1 to 2 (2 periods)
-        fig = plt.figure(figsize=(15, 5))
+        fig = plt.figure(figsize=(12, 5))
         self.histogram.show_phaseogram(
             self,
             phase_limits,
@@ -525,6 +525,7 @@ class PulsarAnalysis:
             hline,
         )
         return fig
+    
 
     def show_Presults(self):
         rpeaks = self.regions.show_peak_results()

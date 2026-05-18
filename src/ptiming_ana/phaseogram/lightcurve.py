@@ -103,16 +103,32 @@ class Lightcurve:
                 verticalalignment="top",
             )
 
+        # elif stats == "short":
+        #     plt.annotate(
+        #         text_towrite
+        #         + "\n"
+        #         + f"$\chi^{2}$-test={pulsar_phases.stats.chisqr_res[2]:.2f}$\sigma$ \n H-test= {pulsar_phases.stats.Htest_res[2]:.2f}$\sigma$ \n Z$_{{10}}$-test={pulsar_phases.stats.Zntest_res[2]:.2f}$\sigma$ ",
+        #         xy=(0.72, 1.3),
+        #         xytext=(0.72, 1.3),
+        #         fontsize=15,
+        #         xycoords="axes fraction",
+        #         textcoords="offset points",
+        #         color="black",
+        #         bbox=dict(facecolor="white", edgecolor="black"),
+        #         horizontalalignment="left",
+        #         verticalalignment="top",
+        #     )
+
         elif stats == "short":
             plt.annotate(
                 text_towrite
                 + "\n"
                 + f"$\chi^{2}$-test={pulsar_phases.stats.chisqr_res[2]:.2f}$\sigma$ \n H-test= {pulsar_phases.stats.Htest_res[2]:.2f}$\sigma$ \n Z$_{{10}}$-test={pulsar_phases.stats.Zntest_res[2]:.2f}$\sigma$ ",
-                xy=(0.72, 1.3),
-                xytext=(0.72, 1.3),
+                xy=(1.03, 0.6),               # <--- Movido al borde derecho
+                xytext=(1.03, 0.6),           # <--- Movido al borde derecho
                 fontsize=15,
                 xycoords="axes fraction",
-                textcoords="offset points",
+                textcoords="axes fraction",   # <--- OJO: Cambiado a axes fraction
                 color="black",
                 bbox=dict(facecolor="white", edgecolor="black"),
                 horizontalalignment="left",
@@ -427,16 +443,33 @@ class Lightcurve:
                 print("No good fit available")
 
         # Add Tobs label
+        # if time_label:
+        #     plt.annotate(
+        #         f"Tobs={pulsar_phases.tobs:.1f} h"
+        #         + "\n"
+        #         + f"Entries={len(pulsar_phases.phases)}",
+        #         xy=(0.11, 1.3),
+        #         xytext=(0.11, 1.3),
+        #         fontsize=15,
+        #         xycoords="axes fraction",
+        #         textcoords="offset points",
+        #         color="k",
+        #         bbox=dict(facecolor="white", edgecolor="k", alpha=0.8),
+        #         horizontalalignment="left",
+        #         verticalalignment="top",
+        #     )
+
+        # Add Tobs label
         if time_label:
             plt.annotate(
                 f"Tobs={pulsar_phases.tobs:.1f} h"
                 + "\n"
                 + f"Entries={len(pulsar_phases.phases)}",
-                xy=(0.11, 1.3),
-                xytext=(0.11, 1.3),
+                xy=(1.03, 0.75),             # <--- Justo debajo de la caja grande
+                xytext=(1.03, 0.75),         # <--- Justo debajo de la caja grande
                 fontsize=15,
                 xycoords="axes fraction",
-                textcoords="offset points",
+                textcoords="axes fraction",  # <--- Cambiado a axes fraction
                 color="k",
                 bbox=dict(facecolor="white", edgecolor="k", alpha=0.8),
                 horizontalalignment="left",
@@ -444,5 +477,11 @@ class Lightcurve:
             )
 
         # Add legend
+        # if add_legend:
+        #     plt.legend(loc=2, bbox_to_anchor=(-0.01, 1.37), fontsize=15)
+
+        # Add legend
         if add_legend:
-            plt.legend(loc=2, bbox_to_anchor=(-0.01, 1.37), fontsize=15)
+            # loc='upper left' ancla la esquina superior izquierda de la leyenda
+            # bbox_to_anchor=(1.03, 0.35) la coloca debajo de la caja de Tobs
+            plt.legend(loc='upper left', fontsize=15)

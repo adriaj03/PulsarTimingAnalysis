@@ -70,11 +70,19 @@ class ReadFermiFile:
         return self.info
 
     def calculate_tobs(self):
-        diff = np.array(self.info["mjd_time"].to_list()[1:]) - np.array(
-            self.info["mjd_time"].to_list()[0:-1]
-        )
-        diff[diff > 5 / 24] = 0
-        return sum(diff) * 24
+        try:
+            # Intentamos leer el ONTIME directamente de la extensión GTI del FITS
+            f = fits.open(self.fname)
+            ontime_s = f['GTI'].header['ONTIME']
+            return ontime_s / 3600.0  # Devolvemos el tiempo real en horas
+        except Exception as e:
+            # Fallback al cálculo antiguo por si acaso el FITS no tiene GTI
+            logger.info("No GTI extension found. Using MJD difference for tobs.")
+            diff = np.array(self.info["mjd_time"].to_list()[1:]) - np.array(
+                self.info["mjd_time"].to_list()[0:-1]
+            )
+            diff[diff > 5 / 24] = 0
+            return sum(diff) * 24
 
     def run(self):
         logger.info("Reading Fermi-LAT data file")
